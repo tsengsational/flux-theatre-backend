@@ -29,6 +29,29 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} ${{ secrets.REMOTE_DIR }}"
           ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chmod -R 755 ${{ secrets.REMOTE_DIR }}"
 
+      - name: Generate wp-config.php
+        run: |
+          # Generate unique salts
+          AUTH_KEY=$(openssl rand -base64 48)
+          SECURE_AUTH_KEY=$(openssl rand -base64 48)
+          LOGGED_IN_KEY=$(openssl rand -base64 48)
+          NONCE_KEY=$(openssl rand -base64 48)
+          AUTH_SALT=$(openssl rand -base64 48)
+          SECURE_AUTH_SALT=$(openssl rand -base64 48)
+          LOGGED_IN_SALT=$(openssl rand -base64 48)
+          NONCE_SALT=$(openssl rand -base64 48)
+
+          # Create wp-config.php from template
+          sed -e "s/define('AUTH_KEY',.*)/define('AUTH_KEY', '$AUTH_KEY');/" \
+              -e "s/define('SECURE_AUTH_KEY',.*)/define('SECURE_AUTH_KEY', '$SECURE_AUTH_KEY');/" \
+              -e "s/define('LOGGED_IN_KEY',.*)/define('LOGGED_IN_KEY', '$LOGGED_IN_KEY');/" \
+              -e "s/define('NONCE_KEY',.*)/define('NONCE_KEY', '$NONCE_KEY');/" \
+              -e "s/define('AUTH_SALT',.*)/define('AUTH_SALT', '$AUTH_SALT');/" \
+              -e "s/define('SECURE_AUTH_SALT',.*)/define('SECURE_AUTH_SALT', '$SECURE_AUTH_SALT');/" \
+              -e "s/define('LOGGED_IN_SALT',.*)/define('LOGGED_IN_SALT', '$LOGGED_IN_SALT');/" \
+              -e "s/define('NONCE_SALT',.*)/define('NONCE_SALT', '$NONCE_SALT');/" \
+              wp-config.template.php > wp-config.php
+
       - name: Copy files
         run: |
           # Copy plugins and themes
