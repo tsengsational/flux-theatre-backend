@@ -25,14 +25,19 @@ jobs:
 
       - name: Create deployment directory
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo mkdir -p ${{ secrets.REMOTE_DIR }}/wp-content ${{ secrets.REMOTE_DIR }}/db"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo mkdir -p ${{ secrets.REMOTE_DIR }}/plugins ${{ secrets.REMOTE_DIR }}/themes ${{ secrets.REMOTE_DIR }}/db"
           ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} ${{ secrets.REMOTE_DIR }}"
           ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chmod -R 755 ${{ secrets.REMOTE_DIR }}"
 
       - name: Copy files
         run: |
-          scp -o StrictHostKeyChecking=no -r wp-content/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/wp-content/
-          scp -o StrictHostKeyChecking=no wp-config.php uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
+          # Copy plugins and themes
+          scp -o StrictHostKeyChecking=no -r wp-content/plugins/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/plugins/
+          scp -o StrictHostKeyChecking=no -r wp-content/themes/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/themes/
+          
+          # Copy configuration files
+          scp -o StrictHostKeyChecking=no wp-config.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
+          scp -o StrictHostKeyChecking=no uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
 
       - name: Create docker-compose file
         run: |
@@ -50,7 +55,8 @@ jobs:
                 WORDPRESS_DB_PASSWORD: wordpress
                 WORDPRESS_DB_NAME: wordpress
               volumes:
-                - ${{ secrets.REMOTE_DIR }}/wp-content:/var/www/html/wp-content
+                - ${{ secrets.REMOTE_DIR }}/plugins:/var/www/html/wp-content/plugins
+                - ${{ secrets.REMOTE_DIR }}/themes:/var/www/html/wp-content/themes
                 - ${{ secrets.REMOTE_DIR }}/wp-config.php:/var/www/html/wp-config.php
                 - ${{ secrets.REMOTE_DIR }}/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
               depends_on:
