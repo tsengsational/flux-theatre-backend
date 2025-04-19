@@ -1,0 +1,82 @@
+name: Deploy WordPress
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Create deployment directory
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo mkdir -p ${{ secrets.REMOTE_DIR }}/wp-content ${{ secrets.REMOTE_DIR }}/db"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} ${{ secrets.REMOTE_DIR }}"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chmod -R 755 ${{ secrets.REMOTE_DIR }}"
+
+      - name: Copy files
+        run: |
+          scp -o StrictHostKeyChecking=no -r wp-content/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/wp-content/
+          scp -o StrictHostKeyChecking=no wp-config.php uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
+
+      - name: Create docker-compose file
+        run: |
+          cat > docker-compose.prod.yml << 'EOL'
+          version: '3'
+
+          services:
+            wordpress:
+              image: wordpress:latest
+              ports:
+                - "80:80"
+              environment:
+                WORDPRESS_DB_HOST: db
+                WORDPRESS_DB_USER: wordpress
+                WORDPRESS_DB_PASSWORD: wordpress
+                WORDPRESS_DB_NAME: wordpress
+              volumes:
+                - ${{ secrets.REMOTE_DIR }}/wp-content:/var/www/html/wp-content
+                - ${{ secrets.REMOTE_DIR }}/wp-config.php:/var/www/html/wp-config.php
+                - ${{ secrets.REMOTE_DIR }}/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+              depends_on:
+                - db
+              restart: always
+
+            db:
+              image: mysql:5.7
+              environment:
+                MYSQL_DATABASE: wordpress
+                MYSQL_USER: wordpress
+                MYSQL_PASSWORD: wordpress
+                MYSQL_ROOT_PASSWORD: somewordpress
+              volumes:
+                - ${{ secrets.REMOTE_DIR }}/db:/var/lib/mysql
+              restart: always
+          EOL
+
+      - name: Copy docker-compose file
+        run: |
+          scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
+
+      - name: Set permissions
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} ${{ secrets.REMOTE_DIR }} && sudo chmod -R 755 ${{ secrets.REMOTE_DIR }}"
+
+      - name: Start Docker services
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cd ${{ secrets.REMOTE_DIR }} && docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml up -d" 

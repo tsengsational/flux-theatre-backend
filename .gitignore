@@ -1,0 +1,21 @@
+# WordPress
+wp-config.php
+wp-content/uploads/*
+wp-content/plugins/*
+wp-content/themes/*
+!wp-content/plugins/flux-theatre/
+!wp-content/themes/flux-theatre/
+
+# Docker
+db_data/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db 

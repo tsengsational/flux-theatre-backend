@@ -1,0 +1,80 @@
+.flux-carousel-control {
+    margin-bottom: 15px;
+}
+
+.flux-carousel-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.flux-carousel-image {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.flux-carousel-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.flux-remove-image {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flux-remove-image:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.flux-add-image {
+    margin-top: 10px;
+}
+
+/* Hide all media-specific controls by default */
+#customize-control-flux_hero_video_url,
+#customize-control-flux_hero_carousel_images,
+#customize-control-flux_hero_carousel_autoplay,
+#customize-control-flux_hero_carousel_interval {
+    display: none !important;
+}
+
+/* Show video controls when video is selected */
+.flux-hero-media-type-video #customize-control-flux_hero_video_url {
+    display: block !important;
+}
+
+/* Show carousel controls when carousel is selected */
+.flux-hero-media-type-carousel #customize-control-flux_hero_carousel_images,
+.flux-hero-media-type-carousel #customize-control-flux_hero_carousel_autoplay,
+.flux-hero-media-type-carousel #customize-control-flux_hero_carousel_interval {
+    display: block !important;
+}
+
+/* Hide image controls when not image type */
+.flux-hero-media-type-video #customize-control-flux_hero_image,
+.flux-hero-media-type-video #customize-control-flux_hero_image_alt,
+.flux-hero-media-type-carousel #customize-control-flux_hero_image,
+.flux-hero-media-type-carousel #customize-control-flux_hero_image_alt {
+    display: none !important;
+} 
