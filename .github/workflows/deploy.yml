@@ -118,4 +118,4 @@ jobs:
 
       - name: Start Docker services
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cd ${{ secrets.REMOTE_DIR }} && docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml up -d" 
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cd ${{ secrets.REMOTE_DIR }} && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d" 
