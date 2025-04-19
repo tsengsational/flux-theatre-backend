@@ -81,7 +81,7 @@ jobs:
             wordpress:
               image: wordpress:latest
               ports:
-                - "80:80"
+                - "8000:80"
               environment:
                 WORDPRESS_DB_HOST: db
                 WORDPRESS_DB_USER: wordpress
