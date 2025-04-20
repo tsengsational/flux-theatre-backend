@@ -12,14 +12,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Debug repository contents
-        run: |
-          echo "Current working directory: $(pwd)"
-          echo "Repository contents:"
-          ls -la
-          echo "Checking for required files:"
-          ls -la wp-config.template.php uploads.ini || true
-
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
@@ -31,14 +23,13 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Copy required files to server
+      - name: Verify server files
         run: |
-          # Use absolute paths from the repository root
-          scp -o StrictHostKeyChecking=no "$(pwd)/wp-config.template.php" ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~
-          scp -o StrictHostKeyChecking=no "$(pwd)/uploads.ini" ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~
-          
-          # Verify files were copied
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "ls -l ~/wp-config.template.php ~/uploads.ini"
+          # Check if required files exist on the server
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "ls -l ~/wp-config.template.php ~/uploads.ini" || {
+            echo "Error: Required files not found on server"
+            exit 1
+          }
 
       - name: Cleanup old files
         run: |
@@ -82,41 +73,34 @@ jobs:
           NONCE_SALT=$(openssl rand -base64 48 | tr -d '\n')
 
           # Create wp-config.php from template using awk
-          awk -v auth_key="$AUTH_KEY" \
-              -v secure_auth_key="$SECURE_AUTH_KEY" \
-              -v logged_in_key="$LOGGED_IN_KEY" \
-              -v nonce_key="$NONCE_KEY" \
-              -v auth_salt="$AUTH_SALT" \
-              -v secure_auth_salt="$SECURE_AUTH_SALT" \
-              -v logged_in_salt="$LOGGED_IN_SALT" \
-              -v nonce_salt="$NONCE_SALT" \
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "awk -v auth_key='$AUTH_KEY' \
+              -v secure_auth_key='$SECURE_AUTH_KEY' \
+              -v logged_in_key='$LOGGED_IN_KEY' \
+              -v nonce_key='$NONCE_KEY' \
+              -v auth_salt='$AUTH_SALT' \
+              -v secure_auth_salt='$SECURE_AUTH_SALT' \
+              -v logged_in_salt='$LOGGED_IN_SALT' \
+              -v nonce_salt='$NONCE_SALT' \
               '{
-                if ($0 ~ /define.*AUTH_KEY/) { print "define(\047AUTH_KEY\047, \047" auth_key "\047);" }
-                else if ($0 ~ /define.*SECURE_AUTH_KEY/) { print "define(\047SECURE_AUTH_KEY\047, \047" secure_auth_key "\047);" }
-                else if ($0 ~ /define.*LOGGED_IN_KEY/) { print "define(\047LOGGED_IN_KEY\047, \047" logged_in_key "\047);" }
-                else if ($0 ~ /define.*NONCE_KEY/) { print "define(\047NONCE_KEY\047, \047" nonce_key "\047);" }
-                else if ($0 ~ /define.*AUTH_SALT/) { print "define(\047AUTH_SALT\047, \047" auth_salt "\047);" }
-                else if ($0 ~ /define.*SECURE_AUTH_SALT/) { print "define(\047SECURE_AUTH_SALT\047, \047" secure_auth_salt "\047);" }
-                else if ($0 ~ /define.*LOGGED_IN_SALT/) { print "define(\047LOGGED_IN_SALT\047, \047" logged_in_salt "\047);" }
-                else if ($0 ~ /define.*NONCE_SALT/) { print "define(\047NONCE_SALT\047, \047" nonce_salt "\047);" }
-                else { print $0 }
-              }' "$(pwd)/wp-config.template.php" > wp-config.php
-
-          # Verify wp-config.php was created
-          if [ ! -f wp-config.php ]; then
-            echo "Error: Failed to create wp-config.php"
-            exit 1
-          fi
+                if (\$0 ~ /define.*AUTH_KEY/) { print \"define('AUTH_KEY', '\" auth_key \"');\" }
+                else if (\$0 ~ /define.*SECURE_AUTH_KEY/) { print \"define('SECURE_AUTH_KEY', '\" secure_auth_key \"');\" }
+                else if (\$0 ~ /define.*LOGGED_IN_KEY/) { print \"define('LOGGED_IN_KEY', '\" logged_in_key \"');\" }
+                else if (\$0 ~ /define.*NONCE_KEY/) { print \"define('NONCE_KEY', '\" nonce_key \"');\" }
+                else if (\$0 ~ /define.*AUTH_SALT/) { print \"define('AUTH_SALT', '\" auth_salt \"');\" }
+                else if (\$0 ~ /define.*SECURE_AUTH_SALT/) { print \"define('SECURE_AUTH_SALT', '\" secure_auth_salt \"');\" }
+                else if (\$0 ~ /define.*LOGGED_IN_SALT/) { print \"define('LOGGED_IN_SALT', '\" logged_in_salt \"');\" }
+                else if (\$0 ~ /define.*NONCE_SALT/) { print \"define('NONCE_SALT', '\" nonce_salt \"');\" }
+                else { print \$0 }
+              }' ~/wp-config.template.php > ~/wp-content/wp-config.php"
 
       - name: Copy files
         run: |
-          # Copy plugins and themes using absolute paths
+          # Copy plugins and themes
           scp -o StrictHostKeyChecking=no -r "$(pwd)/wp-content/plugins/"* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/plugins/
           scp -o StrictHostKeyChecking=no -r "$(pwd)/wp-content/themes/"* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/themes/
           
-          # Copy configuration files
-          scp -o StrictHostKeyChecking=no wp-config.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/
-          scp -o StrictHostKeyChecking=no uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/
+          # Copy uploads.ini to wp-content
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp ~/uploads.ini ~/wp-content/"
 
       - name: Create docker-compose file
         run: |
