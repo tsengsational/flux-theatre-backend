@@ -12,6 +12,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Verify required files
+        run: |
+          if [ ! -f wp-config.template.php ]; then
+            echo "Error: wp-config.template.php not found in repository"
+            exit 1
+          fi
+          if [ ! -f uploads.ini ]; then
+            echo "Error: uploads.ini not found in repository"
+            exit 1
+          fi
+
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
@@ -84,6 +95,12 @@ jobs:
                 else if ($0 ~ /define.*NONCE_SALT/) { print "define(\047NONCE_SALT\047, \047" nonce_salt "\047);" }
                 else { print $0 }
               }' wp-config.template.php > wp-config.php
+
+          # Verify wp-config.php was created
+          if [ ! -f wp-config.php ]; then
+            echo "Error: Failed to create wp-config.php"
+            exit 1
+          fi
 
       - name: Copy files
         run: |
