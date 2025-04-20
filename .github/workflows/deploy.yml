@@ -23,13 +23,24 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Verify server files
+      - name: Upload configuration files
         run: |
-          # Check if required files exist on the server
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "ls -l ~/wp-config.template.php ~/uploads.ini" || {
-            echo "Error: Required files not found on server"
+          # Create config directory if it doesn't exist
+          mkdir -p config
+          
+          # Move configuration files to config directory if they exist in root
+          [ -f wp-config.template.php ] && mv wp-config.template.php config/
+          [ -f uploads.ini ] && mv uploads.ini config/
+          
+          # Verify configuration files exist
+          if [ ! -f config/wp-config.template.php ] || [ ! -f config/uploads.ini ]; then
+            echo "Error: Required configuration files not found in config directory"
             exit 1
-          }
+          fi
+          
+          # Upload configuration files to server
+          scp -o StrictHostKeyChecking=no config/wp-config.template.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/
+          scp -o StrictHostKeyChecking=no config/uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/
 
       - name: Cleanup old files
         run: |
@@ -100,7 +111,7 @@ jobs:
           scp -o StrictHostKeyChecking=no -r "$(pwd)/wp-content/themes/"* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/themes/
           
           # Copy uploads.ini to wp-content
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp ~/uploads.ini ~/wp-content/"
+          scp -o StrictHostKeyChecking=no "$(pwd)/config/uploads.ini" ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/
 
       - name: Create docker-compose file
         run: |
