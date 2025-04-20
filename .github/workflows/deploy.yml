@@ -23,31 +23,37 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Debug configuration files
-        run: |
-          echo "Current working directory: $(pwd)"
-          echo "Listing all files in the current directory:"
-          ls -al
-          echo "Checking the 'config' directory explicitly:"
-          ls -al config || echo "'config' directory not found"
+      - name: Debug working directory
+              run: |
+                echo "Current working directory: $(pwd)"
+                echo "Listing all files in the working directory:"
+                ls -al
+                echo "Listing all files in the 'config' directory:"
+                ls -al config || echo "'config' directory not found!"
 
       - name: Ensure required configuration files
         run: |
-          if [ ! -f config/wp-config.template.php ]; then
+          CONFIG_DIR="$(pwd)/config"
+
+          if [ ! -d "$CONFIG_DIR" ]; then
+            echo "Error: 'config' directory does not exist at $CONFIG_DIR."
+            exit 1
+          fi
+
+          if [ ! -f "$CONFIG_DIR/wp-config.template.php" ]; then
             echo "Error: 'wp-config.template.php' not found in the 'config' directory."
             exit 1
           fi
 
-          if [ ! -f config/uploads.ini ]; then
+          if [ ! -f "$CONFIG_DIR/uploads.ini" ]; then
             echo "Error: 'uploads.ini' not found in the 'config' directory."
             exit 1
           fi
 
-          echo "Configuration files are correctly located in the 'config' directory."
+          echo "All required configuration files are correctly located in the 'config' directory."
 
       - name: Upload configuration files
         run: |
-          # Upload configuration files to server
           scp -o StrictHostKeyChecking=no config/wp-config.template.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/
           scp -o StrictHostKeyChecking=no config/uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/
 
