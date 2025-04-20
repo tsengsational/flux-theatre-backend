@@ -25,30 +25,18 @@ jobs:
 
       - name: Ensure required configuration files
         run: |
-          mkdir -p config
-          
-          # Check or generate wp-config.template.php
-          if [ ! -f wp-config.template.php ]; then
-            echo "<?php // Default wp-config template" > wp-config.template.php
-            echo "Generated wp-config.template.php"
-          fi
-          mv -f wp-config.template.php config/
-          
-          # Check or generate uploads.ini
-          if [ ! -f uploads.ini ]; then
-            echo "upload_max_filesize = 64M" > uploads.ini
-            echo "post_max_size = 64M" >> uploads.ini
-            echo "Generated uploads.ini"
-          fi
-          mv -f uploads.ini config/
-          
-          # Verify configuration files exist in config directory
-          if [ ! -f config/wp-config.template.php ] || [ ! -f config/uploads.ini ]; then
-            echo "Error: Required configuration files not found in config directory"
-            ls -l config/ # Debugging step to show files in the config directory
+          # Check if the necessary configuration files are in the config directory
+          if [ ! -f config/wp-config.template.php ]; then
+            echo "Error: 'wp-config.template.php' not found in the 'config' directory."
             exit 1
           fi
-          echo "Configuration files are ready."
+
+          if [ ! -f config/uploads.ini ]; then
+            echo "Error: 'uploads.ini' not found in the 'config' directory."
+            exit 1
+          fi
+
+          echo "Configuration files are correctly located in the 'config' directory."
 
       - name: Upload configuration files
         run: |
