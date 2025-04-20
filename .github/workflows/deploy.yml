@@ -34,7 +34,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp -r ~/wp-content/db ~/wp-content-backup/ 2>/dev/null || true"
           
           # Remove old files but preserve uploads and database
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "rm -rf ~/wp-content/plugins ~/wp-content/themes ~/wp-content/wp-config.php ~/wp-content/uploads.ini ~/docker-compose.yml"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo rm -rf ~/wp-content/plugins ~/wp-content/themes ~/wp-content/wp-config.php ~/wp-content/uploads.ini ~/docker-compose.yml"
           
           # Restore uploads and database from backup
           ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp -r ~/wp-content-backup/uploads ~/wp-content/ 2>/dev/null || true"
@@ -42,6 +42,10 @@ jobs:
           
           # Clean up backup
           ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "rm -rf ~/wp-content-backup"
+          
+          # Set proper permissions for new directories
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} ~/wp-content"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chmod -R 755 ~/wp-content"
 
       - name: Create deployment directories
         run: |
