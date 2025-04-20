@@ -12,17 +12,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Verify required files
-        run: |
-          if [ ! -f wp-config.template.php ]; then
-            echo "Error: wp-config.template.php not found in repository"
-            exit 1
-          fi
-          if [ ! -f uploads.ini ]; then
-            echo "Error: uploads.ini not found in repository"
-            exit 1
-          fi
-
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
@@ -33,6 +22,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+
+      - name: Copy required files to server
+        run: |
+          # Copy template and config files
+          scp -o StrictHostKeyChecking=no wp-config.template.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~
+          scp -o StrictHostKeyChecking=no uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~
+          
+          # Verify files were copied
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "ls -l ~/wp-config.template.php ~/uploads.ini"
 
       - name: Cleanup old files
         run: |
