@@ -23,9 +23,16 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+      - name: Debug configuration files
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Listing all files in the current directory:"
+          ls -al
+          echo "Checking the 'config' directory explicitly:"
+          ls -al config || echo "'config' directory not found"
+
       - name: Ensure required configuration files
         run: |
-          # Check if the necessary configuration files are in the config directory
           if [ ! -f config/wp-config.template.php ]; then
             echo "Error: 'wp-config.template.php' not found in the 'config' directory."
             exit 1
