@@ -23,6 +23,24 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+      - name: Ensure required configuration files
+        run: |
+          mkdir -p config
+          # Check or generate wp-config.template.php
+          if [ ! -f wp-config.template.php ]; then
+            echo "<?php // Default wp-config template" > wp-config.template.php
+            echo "Generated wp-config.template.php"
+          fi
+          mv wp-config.template.php config/
+
+          # Check or generate uploads.ini
+          if [ ! -f uploads.ini ]; then
+            echo "upload_max_filesize = 64M" > uploads.ini
+            echo "post_max_size = 64M" >> uploads.ini
+            echo "Generated uploads.ini"
+          fi
+          mv uploads.ini config/
+
       - name: Upload configuration files
         run: |
           # Create config directory if it doesn't exist
