@@ -41,10 +41,11 @@ jobs:
             echo "Generated uploads.ini"
           fi
           mv -f uploads.ini config/
-  
-          # Verify configuration files exist
+          
+          # Verify configuration files exist in config directory
           if [ ! -f config/wp-config.template.php ] || [ ! -f config/uploads.ini ]; then
             echo "Error: Required configuration files not found in config directory"
+            ls -l config/ # Debugging step to show files in the config directory
             exit 1
           fi
           echo "Configuration files are ready."
