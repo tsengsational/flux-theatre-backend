@@ -24,12 +24,12 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Debug working directory
-              run: |
-                echo "Current working directory: $(pwd)"
-                echo "Listing all files in the working directory:"
-                ls -al
-                echo "Listing all files in the 'config' directory:"
-                ls -al config || echo "'config' directory not found!"
+          run: |
+            echo "Current working directory: $(pwd)"
+            echo "Listing all files in the working directory:"
+            ls -al
+            echo "Listing all files in the 'config' directory:"
+            ls -al config || echo "'config' directory not found!"
 
       - name: Ensure required configuration files
         run: |
