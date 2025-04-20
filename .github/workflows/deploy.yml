@@ -23,11 +23,30 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Create deployment directory
+      - name: Cleanup old files
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo mkdir -p ${{ secrets.REMOTE_DIR }}/plugins ${{ secrets.REMOTE_DIR }}/themes ${{ secrets.REMOTE_DIR }}/db"
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} ${{ secrets.REMOTE_DIR }}"
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chmod -R 755 ${{ secrets.REMOTE_DIR }}"
+          # Stop Docker services first
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cd ~ && docker compose down"
+          
+          # Backup important files
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "mkdir -p ~/wp-content-backup"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp -r ~/wp-content/uploads ~/wp-content-backup/ 2>/dev/null || true"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp -r ~/wp-content/db ~/wp-content-backup/ 2>/dev/null || true"
+          
+          # Remove old files but preserve uploads and database
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "rm -rf ~/wp-content/plugins ~/wp-content/themes ~/wp-content/wp-config.php ~/wp-content/uploads.ini ~/docker-compose.yml"
+          
+          # Restore uploads and database from backup
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp -r ~/wp-content-backup/uploads ~/wp-content/ 2>/dev/null || true"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cp -r ~/wp-content-backup/db ~/wp-content/ 2>/dev/null || true"
+          
+          # Clean up backup
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "rm -rf ~/wp-content-backup"
+
+      - name: Create deployment directories
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "mkdir -p ~/wp-content/plugins ~/wp-content/themes ~/wp-content/uploads"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "chmod -R 755 ~/wp-content"
 
       - name: Generate wp-config.php
         run: |
@@ -65,16 +84,16 @@ jobs:
       - name: Copy files
         run: |
           # Copy plugins and themes
-          scp -o StrictHostKeyChecking=no -r wp-content/plugins/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/plugins/
-          scp -o StrictHostKeyChecking=no -r wp-content/themes/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/themes/
+          scp -o StrictHostKeyChecking=no -r wp-content/plugins/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/plugins/
+          scp -o StrictHostKeyChecking=no -r wp-content/themes/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/themes/
           
           # Copy configuration files
-          scp -o StrictHostKeyChecking=no wp-config.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
-          scp -o StrictHostKeyChecking=no uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
+          scp -o StrictHostKeyChecking=no wp-config.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/
+          scp -o StrictHostKeyChecking=no uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/wp-content/
 
       - name: Create docker-compose file
         run: |
-          cat > docker-compose.prod.yml << 'EOL'
+          cat > docker-compose.yml << 'EOL'
           version: '3'
 
           services:
@@ -88,10 +107,11 @@ jobs:
                 WORDPRESS_DB_PASSWORD: wordpress
                 WORDPRESS_DB_NAME: wordpress
               volumes:
-                - ${{ secrets.REMOTE_DIR }}/plugins:/var/www/html/wp-content/plugins
-                - ${{ secrets.REMOTE_DIR }}/themes:/var/www/html/wp-content/themes
-                - ${{ secrets.REMOTE_DIR }}/wp-config.php:/var/www/html/wp-config.php
-                - ${{ secrets.REMOTE_DIR }}/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+                - ~/wp-content/plugins:/var/www/html/wp-content/plugins
+                - ~/wp-content/themes:/var/www/html/wp-content/themes
+                - ~/wp-content/uploads:/var/www/html/wp-content/uploads
+                - ~/wp-content/wp-config.php:/var/www/html/wp-config.php
+                - ~/wp-content/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
               depends_on:
                 - db
               restart: always
@@ -104,18 +124,18 @@ jobs:
                 MYSQL_PASSWORD: wordpress
                 MYSQL_ROOT_PASSWORD: somewordpress
               volumes:
-                - ${{ secrets.REMOTE_DIR }}/db:/var/lib/mysql
+                - ~/wp-content/db:/var/lib/mysql
               restart: always
           EOL
 
       - name: Copy docker-compose file
         run: |
-          scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:${{ secrets.REMOTE_DIR }}/
+          scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/
 
       - name: Set permissions
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} ${{ secrets.REMOTE_DIR }} && sudo chmod -R 755 ${{ secrets.REMOTE_DIR }}"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "chmod -R 755 ~/wp-content"
 
       - name: Start Docker services
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cd ${{ secrets.REMOTE_DIR }} && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d" 
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }} "cd ~ && docker compose down && docker compose up -d" 
