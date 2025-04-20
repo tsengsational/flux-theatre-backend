@@ -24,46 +24,33 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Ensure required configuration files
-        run: |
-          mkdir -p config
-          
-          # Check or generate wp-config.template.php
-          if [ ! -f wp-config.template.php ]; then
-            echo "<?php // Default wp-config template" > wp-config.template.php
-            echo "Generated wp-config.template.php"
-          fi
-          mv -f wp-config.template.php config/
-
-          # Check or generate uploads.ini
-          if [ ! -f uploads.ini ]; then
-            echo "upload_max_filesize = 64M" > uploads.ini
-            echo "post_max_size = 64M" >> uploads.ini
-            echo "Generated uploads.ini"
-          fi
-          mv -f uploads.ini config/
-
-          # Verify configuration files exist
-          if [ ! -f config/wp-config.template.php ] || [ ! -f config/uploads.ini ]; then
-            echo "Error: Required configuration files not found in config directory"
-            exit 1
-          fi
-
+          run: |
+            mkdir -p config
+            
+            # Check or generate wp-config.template.php
+            if [ ! -f wp-config.template.php ]; then
+              echo "<?php // Default wp-config template" > wp-config.template.php
+              echo "Generated wp-config.template.php"
+            fi
+            mv -f wp-config.template.php config/
+            
+            # Check or generate uploads.ini
+            if [ ! -f uploads.ini ]; then
+              echo "upload_max_filesize = 64M" > uploads.ini
+              echo "post_max_size = 64M" >> uploads.ini
+              echo "Generated uploads.ini"
+            fi
+            mv -f uploads.ini config/
+    
+            # Verify configuration files exist
+            if [ ! -f config/wp-config.template.php ] || [ ! -f config/uploads.ini ]; then
+              echo "Error: Required configuration files not found in config directory"
+              exit 1
+            fi
+            echo "Configuration files are ready."
 
       - name: Upload configuration files
         run: |
-          # Create config directory if it doesn't exist
-          mkdir -p config
-          
-          # Move configuration files to config directory if they exist in root
-          [ -f wp-config.template.php ] && mv wp-config.template.php config/
-          [ -f uploads.ini ] && mv uploads.ini config/
-          
-          # Verify configuration files exist
-          if [ ! -f config/wp-config.template.php ] || [ ! -f config/uploads.ini ]; then
-            echo "Error: Required configuration files not found in config directory"
-            exit 1
-          fi
-          
           # Upload configuration files to server
           scp -o StrictHostKeyChecking=no config/wp-config.template.php ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/
           scp -o StrictHostKeyChecking=no config/uploads.ini ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_IP }}:~/
